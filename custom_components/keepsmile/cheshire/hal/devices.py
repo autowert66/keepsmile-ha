@@ -87,11 +87,12 @@ class DeviceProfile:
         compiler = self.compiler()
         transmitter_fetcher = self.get_transmitter
 
-        # --- FIX: Dynamically detect if KS03~ is actually using the old protocol ---
+        # --- FIX: KS03~ uses new commands, but might use the old fff0 Bluetooth service ---
         if device.name and device.name.startswith("KS03~"):
             has_old_protocol = any("fff0" in s.uuid.lower() for s in client.services)
             if has_old_protocol:
-                compiler = KS03OldCompiler()
+                # Keep the NEW compiler, but use the OLD service UUIDs
+                compiler = KS03NewCompiler()
                 
                 def fallback_fetcher(c):
                     return BLETransmitter(c, GattProfile.new("fff0", "fff3", "fff3", "fff3"))

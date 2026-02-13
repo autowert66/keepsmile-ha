@@ -15,9 +15,10 @@ class KS03NewRGBWBrightnessSpeedCommand(PlatformCommand):
     _color_struct = Struct("BBBBBB")
 
     def __init__(self, red: int, green: int, blue: int, white: int, brightness: int, speed: int, is_rgb: bool):
-        is_rgb_hex = b"\x01" if is_rgb else b"\x02"
         white = 0 if is_rgb else white
-        self._bytes = b"\x5A\x00" + is_rgb_hex + self._color_struct.pack(red, green, blue, white, brightness, speed) + b"\xA5"
+        # FIX: The official app sends 9 bytes, not 10 bytes for this variant.
+        # Removed the `is_rgb_hex` byte to perfectly match the btsnoop log payload.
+        self._bytes = b"\x5A\x00" + self._color_struct.pack(red, green, blue, white, brightness, speed) + b"\xA5"
 
 class KS03NewSceneCommand(PlatformCommand):
     _scene_struct = Struct("BBB")
