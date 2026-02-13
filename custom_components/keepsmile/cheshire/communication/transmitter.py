@@ -1,7 +1,7 @@
+import asyncio
 from abc import ABC, abstractmethod
 
 from ..generic.platform_command import PlatformCommand
-
 
 class Transmitter(ABC):
     @abstractmethod
@@ -19,3 +19,5 @@ class Transmitter(ABC):
     async def send_all(self, cmds: list[PlatformCommand]):
         for cmd in cmds:
             await self.send(cmd)
+            # FIX: Add a 100ms delay to prevent the BLE chip from dropping packets
+            await asyncio.sleep(0.1)

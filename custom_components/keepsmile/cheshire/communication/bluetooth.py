@@ -6,10 +6,6 @@ from .transmitter import Transmitter
 
 @dataclass
 class GattProfile:
-    """
-    Holds the BLE GATT service and characteristic paths to read write and notify
-    """
-
     write_service: str
     write_characteristic: str
     notify_service: str
@@ -37,16 +33,15 @@ class GattProfile:
             read_service,
             read_characteristic)
 
-
 class BLETransmitter(Transmitter):
     def __init__(self, client: BleakClient, gatt: GattProfile):
         self._client = client
         self._gatt = gatt
-        self._characteristic: BleakGATTCharacteristic
+        self._characteristic = None
         for service in self._client.services:
-            if service.uuid[4:8] == self._gatt.write_service:
+            if service.uuid[4:8].lower() == self._gatt.write_service.lower():
                 for characteristic in service.characteristics:
-                    if characteristic.uuid[4:8] == self._gatt.write_characteristic:
+                    if characteristic.uuid[4:8].lower() == self._gatt.write_characteristic.lower():
                         self._characteristic = characteristic
                         return
         raise ConnectionError(f"Expected BLEClient to support a characteristic with UUID[4:8] == {self._gatt.write_characteristic}")
@@ -58,4 +53,7 @@ class BLETransmitter(Transmitter):
         await self._client.disconnect()
 
     async def send_raw(self, raw_cmd: bytes):
-        return await self._client.write_gatt_char(self._characteristic, raw_cmd, False)
+        # FIX: Dynamically determine if the characteristic requires a response.
+        # Hardcoding False causes commands to be ignored on many hardware revisions.
+        response = "write-without-response" not in self._characteristic.properties
+        return await self._client.write_gatt_char(self._characteristic, raw_cmd, response)
