@@ -77,9 +77,6 @@ class DeviceProfile:
     get_transmitter: Callable[[BleakClient], Transmitter] 
 
     async def connect(self, device: BLEDevice, client: BleakClient | None = None):
-        # Instantiate device command compiler
-        compiler = self.compiler()
-
         # Connect client if not provided
         if client is None:
             client = BleakClient(device)
@@ -87,8 +84,22 @@ class DeviceProfile:
         elif not client.is_connected:
             await client.connect()
 
+        compiler = self.compiler()
+        transmitter_fetcher = self.get_transmitter
+
+        # --- FIX: Dynamically detect if KS03~ is actually using the old protocol ---
+        if device.name and device.name.startswith("KS03~"):
+            has_old_protocol = any("fff0" in s.uuid.lower() for s in client.services)
+            if has_old_protocol:
+                compiler = KS03OldCompiler()
+                
+                def fallback_fetcher(c):
+                    return BLETransmitter(c, GattProfile.new("fff0", "fff3", "fff3", "fff3"))
+                transmitter_fetcher = fallback_fetcher
+        # -------------------------------------------------------------------------
+
         # Wrap BleakClient in a command transmitter
-        transmitter = self.get_transmitter(client)
+        transmitter = transmitter_fetcher(client)
         return Connection(compiler, transmitter)
 
 def make_transmitter_fetcher(prefix: DeviceNamePrefix):
