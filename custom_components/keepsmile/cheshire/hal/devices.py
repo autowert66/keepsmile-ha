@@ -42,7 +42,6 @@ def gatt_from_prefix(prefix: DeviceNamePrefix) -> GattProfile:
         DeviceNamePrefix.KS04: GattProfile.new("fff0", "fff3", "fff3", "fff3"),
         DeviceNamePrefix.KS04_New: GattProfile.new("ae00", "ae01", "ae02", "ae10"),
         DeviceNamePrefix.KS05: GattProfile.new_ex("ae00", "ae01", "ae00", "ae02", "ff00", "ff02"),
-        DeviceNamePrefix.KS05: GattProfile.new("ae00", "ae01", "ae02", "ff02"),
         DeviceNamePrefix.KS07: GattProfile.new("ae00", "ae01", "ae02", "ae10"),
         DeviceNamePrefix.KS08: GattProfile.new("ae00", "ae01", "ae02", "ae10"),
         DeviceNamePrefix.KS09: GattProfile.new("ae00", "ae01", "ae02", "ae10"),
@@ -77,12 +76,16 @@ class DeviceProfile:
     get_transmitter: Callable[[BleakClient], Transmitter] 
 
     async def connect(self, device: BLEDevice, client: BleakClient | None = None):
+        from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
+
         # Connect client if not provided
-        if client is None:
-            client = BleakClient(device)
-            await client.connect()
-        elif not client.is_connected:
-            await client.connect()
+        if client is None or not client.is_connected:
+            client = await establish_connection(
+                BleakClientWithServiceCache,
+                device,
+                device.name or str(device.address),
+                max_attempts=3
+            )
 
         compiler = self.compiler()
         transmitter_fetcher = self.get_transmitter
